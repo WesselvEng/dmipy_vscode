@@ -1,28 +1,3 @@
-# %%
-#Script only works when connected to Donders VPN, otherwise the paths cannot be found.
-#uses newest dmipy version
-#first open interactive job with GPU
-#load module and set jax path to GPU libraries
-
-#mix solver so far only one that works properly
-#so now using mix solver with 32 procs, 32 gb of memory
-
-#%%
-#GPU-fitting environmental variables:
-export LD_LIBRARY_PATH=$(find "$CONDA_PREFIX/lib"/python*/site-packages/nvidia -name lib -type d | tr '\n' ':')$LD_LIBRARY_PATH
-export JAX_LOG_COMPILES=1
-export JAX_CAPTURED_CONSTANTS_REPORT_FRAMES=-1
-#export DMIPY_JAX_BATCH=XXXX
-
-#%%
-module load anaconda3
-module load cuda/12.4
-conda activate dmipy2
-python
-
-# %%
-
-
 from dmipy_fit.core.modeling_framework import MultiCompartmentModel
 from dmipy_fit.signal_models import cylinder_models, sphere_models, gaussian_models
 from dmipy_fit.distributions.distribute_models import SD1WatsonDistributed
@@ -41,7 +16,7 @@ import pathos
 import os
 
 # %%
-os.chdir(r'/project/4180000.74/wessel/pilot/data/pilot1/analysis_jax_frankparas/')
+os.chdir(r'/project/4180000.74/wessel/pilot/data/pilot1/analysis_Ns4/')
 os.listdir()
 
 # %%
@@ -131,29 +106,12 @@ print(data)
 
 
 # %%
-
-#For GPU-accelerated fitting, use the following code:
 microg_fit = model.fit(
    acq_scheme, data, mask=mask_file,
-    solver="jax", Ns=3, N_sphere_samples=18
+    solver="jax", Ns=4
 )
 
-#For CPU fitting, use the following code, for mix:
-microg_fit = model.fit(
-   acq_scheme, data, mask=mask_file,
-    solver="mix", use_parallel_processing=True,
-    number_of_processors=32,
-)
 
-#For CPU fitting, use the following code, for brute2fine:
-microg_fit = model.fit(
-   acq_scheme, data, mask=mask_file,
-    solver="brute2fine", 
-    use_parallel_processing=True,
-    number_of_processors=32,
-)
-
-# %%
 # %% [markdown]
 microg_fit.fitted_parameters
 
@@ -162,11 +120,8 @@ import pickle
 with open ('fitted_parameters.pkl', 'wb+') as f:
     pickle.dump(fitted_parameters, f)
 
-#to open the fitted parameters later, use:
-fitted_parameters = pickle.load(open('fitted_parameters.pkl', 'rb'))
 
-#%%
-fig, axs = plt.subplots(3, 4, figsize=[25, 20])
+fig, axs = plt.subplots(3, 4, figsize=[15, 10])
 axs = axs.ravel()
 
 counter = 0
@@ -178,8 +133,8 @@ for name, values in fitted_parameters.items():
     axs[counter].set_title(name)
     fig.colorbar(cf, ax=axs[counter], shrink=0.5)
     counter += 1
-fig.tight_layout()
-plt.savefig('fitted_parameters2.png', dpi=300, bbox_inches='tight')
+
+plt.savefig('fitted_parameters.png', dpi=300, bbox_inches='tight')
 
 # %%
 fitted_parameters
