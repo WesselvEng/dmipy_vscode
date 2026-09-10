@@ -1,0 +1,8 @@
+# Ignore everything by default
+*
+
+# Un-ignore Python files, wherever they are
+!*.py
+
+# Keep this file tracked too
+!.gitignore

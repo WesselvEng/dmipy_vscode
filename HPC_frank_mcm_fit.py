@@ -1,0 +1,182 @@
+module load anaconda3
+module load cuda/12.4
+conda activate dmipy2
+
+export LD_LIBRARY_PATH=$(find "$CONDA_PREFIX/lib"/python*/site-packages/nvidia -name lib -type d | tr '\n' ':')$LD_LIBRARY_PATH
+export JAX_LOG_COMPILES=1
+export JAX_CAPTURED_CONSTANTS_REPORT_FRAMES=-1
+python
+
+# %%
+
+
+from dmipy_fit.core.modeling_framework import MultiCompartmentModel
+from dmipy_fit.signal_models import cylinder_models, sphere_models, gaussian_models
+from dmipy_fit.distributions.distribute_models import SD1WatsonDistributed
+from dmipy_fit.core.acquisition_scheme import acquisition_scheme_from_bvalues
+from dmipy_fit.core import modeling_framework
+from dmipy_fit.core.acquisition_scheme import acquisition_scheme_from_bvalues
+from os.path import join
+import numpy as np
+import dipy
+import matplotlib.pyplot as plt
+import scipy
+from scipy.io import savemat
+import numpy as np
+import numba
+import pathos
+import os
+
+# %%
+os.chdir(r'/project/4180000.74/wessel/pilot/data/pilot1/analysis_frank_jax/')
+os.listdir()
+
+bvalues = np.loadtxt('bvals_merged_new')  # given in s/mm^2
+bvalues_SI = bvalues * 1e6  # now given in SI units as s/m^2
+
+gradient_directions = np.loadtxt('bvecs_new')  # on the unit sphere
+gradient_directions = np.transpose(gradient_directions)
+
+delta = np.loadtxt('small_delta_new')
+delta = delta / 1000
+Delta = np.loadtxt('big_delta_new.txt')
+Delta = Delta / 1000
+
+acq_scheme = acquisition_scheme_from_bvalues(bvalues_SI, gradient_directions, delta, Delta)
+
+acq_scheme.print_acquisition_info
+
+#%%
+
+data = dipy.data.fetcher.load_nifti_data("gibbs_all__0011.nii.gz")
+mask_file = dipy.data.fetcher.load_nifti_data("gibbs_mask_0011.nii.gz")
+# C1Stick
+# lambda_par = isotropic diffusivity in m^2/s
+#astrosticks = cylinder_models.C1Stick(mu=None,lambda_par=None)
+astrosticks = cylinder_models.C1Stick()
+
+# Spheres
+#diameter=None, diffusion_constant=1.7e-09
+sphere_small = sphere_models.S4SphereGaussianPhaseApproximation(diffusion_constant=1.0e-09)
+#sphere_small = sphere_models.S2SphereStejskalTannerApproximation()
+sphere_large = sphere_models.S4SphereGaussianPhaseApproximation(diffusion_constant=1.0e-09)
+#sphere_large = sphere_models.S2SphereStejskalTannerApproximation()
+
+
+# Hindered
+#hindered = gaussian_models.G2Zeppelin(mu=None, lambda_par=None, lambda_perp=None)
+hindered = gaussian_models.G2Zeppelin()
+
+# Free
+# lambda_iso = isotropic diffusivity in m^2/s -> FW 3 x10-3 mm2/s
+free_water_ball = gaussian_models.G1Ball(lambda_iso= 3.0e-09)
+
+# Configure the model with a Watson distribution for fiber orientation dispersion
+watson_distribution = SD1WatsonDistributed(models=[astrosticks, hindered])
+watson_distribution.set_fixed_parameter('C1Stick_1_lambda_par', 1.0e-9)
+
+#%%
+
+# `mu` represents the main orientation in spherical coordinates (theta, phi)
+# `kappa` is the concentration parameter of the Watson distribution, related to dispersion
+# Set up compartments incl. dispersed bundle
+model = MultiCompartmentModel(models=[sphere_small, sphere_large, watson_distribution, free_water_ball])
+model.set_fixed_parameter('G1Ball_1_lambda_iso', 3.0e-09)
+#model.set_parameter_optimization_bounds('G2Zeppelin_1_lambda_par', [0.1e-09, 2.9e-09])
+#model.set_parameter_optimization_bounds('G2Zeppelin_1_lambda_perp', [0.1e-09, 2.9e-09])
+model.set_parameter_optimization_bounds('S4SphereGaussianPhaseApproximation_1_diameter', [0.1e-06, 12.0e-06])
+model.set_parameter_optimization_bounds('S4SphereGaussianPhaseApproximation_2_diameter', [12.1e-06, 24.0e-06])
+#model.set_parameter_optimization_bounds('S2SphereStejskalTannerApproximation_1_diameter', [0.1e-06, 12.0e-06])
+#model.set_parameter_optimization_bounds('S2SphereStejskalTannerApproximation_2_diameter', [12.1e-06, 24.0e-06])
+#Can also restrict fractions:
+#model.set_parameter_optimization_bounds('partial_volume_2', [0.1, 1])
+#model.set_parameter_optimization_bounds('partial_volume_3', [0.1, 1])
+#model.set_parameter_optimization_bounds('partial_volume_0', [0.01, 0.50])  
+#model.set_parameter_optimization_bounds('SD1WatsonDistributed_1_SD1Watson_1_odi', [0.01, 0.8])  
+# Set up compartments incl. dispersed bundle
+model = MultiCompartmentModel(models=[sphere_small, sphere_large, watson_distribution, free_water_ball])
+model.set_fixed_parameter('G1Ball_1_lambda_iso', 3.0e-09)
+#model.set_parameter_optimization_bounds('G2Zeppelin_1_lambda_par', [0.1e-09, 2.9e-09])
+#model.set_parameter_optimization_bounds('G2Zeppelin_1_lambda_perp', [0.1e-09, 2.9e-09])
+model.set_parameter_optimization_bounds('S4SphereGaussianPhaseApproximation_1_diameter', [0.1e-06, 12.0e-06])
+model.set_parameter_optimization_bounds('S4SphereGaussianPhaseApproximation_2_diameter', [12.1e-06, 24.0e-06])
+#model.set_parameter_optimization_bounds('S2SphereStejskalTannerApproximation_1_diameter', [0.1e-06, 12.0e-06])
+#model.set_parameter_optimization_bounds('S2SphereStejskalTannerApproximation_2_diameter', [12.1e-06, 24.0e-06])
+#Can also restrict fractions:
+#model.set_parameter_optimization_bounds('partial_volume_2', [0.1, 1])
+#model.set_parameter_optimization_bounds('partial_volume_3', [0.1, 1])
+#model.set_parameter_optimization_bounds('partial_volume_0', [0.01, 0.50])  
+#model.set_parameter_optimization_bounds('SD1WatsonDistributed_1_SD1Watson_1_odi', [0.01, 0.8]) 
+
+data.shape
+mask_file.shape
+
+#%% 
+
+plt.figure(figsize=(4, 4))
+plt.imshow(data[:,:,0,0])
+plt.title('b0 of brain data')
+plt.axis('off');
+plt.savefig('b0_image.png', dpi=300, bbox_inches='tight')
+
+#%%
+
+model.parameter_cardinality
+data=np.squeeze(data)
+mask_file=np.squeeze(mask_file)
+print(data)
+
+#%%
+
+#For GPU-accelerated fitting, use the following code:
+microg_fit = model.fit(
+   acq_scheme, data, mask=mask_file,
+    solver="jax"
+)
+
+#For CPU fitting, use the following code, for mix:
+microg_fit = model.fit(
+   acq_scheme, data, mask=mask_file,
+    solver="mix", use_parallel_processing=True,
+    number_of_processors=32,
+)
+
+#For CPU fitting, use the following code, for brute2fine:
+microg_fit = model.fit(
+   acq_scheme, data, mask=mask_file,
+    solver="brute2fine", 
+    use_parallel_processing=True,
+    number_of_processors=32,
+)
+
+# %%
+# %% [markdown]
+microg_fit.fitted_parameters
+
+fitted_parameters = microg_fit.fitted_parameters
+import pickle
+with open ('fitted_parameters.pkl', 'wb+') as f:
+    pickle.dump(fitted_parameters, f)
+
+#to open the fitted parameters later, use:
+#fitted_parameters = pickle.load(open('fitted_parameters.pkl', 'rb'))
+
+#%%
+fig, axs = plt.subplots(3, 4, figsize=[25, 20])
+axs = axs.ravel()
+
+counter = 0
+for name, values in fitted_parameters.items():
+    if values.squeeze().ndim != 2:
+        continue
+    #cf = axs[counter].imshow(values.squeeze().T, origin=True, interpolation='nearest')#
+    cf = axs[counter].imshow(values.squeeze().T, origin='lower',interpolation='nearest')
+    axs[counter].set_title(name)
+    fig.colorbar(cf, ax=axs[counter], shrink=0.5)
+    counter += 1
+fig.tight_layout()
+plt.savefig('fitted_parameters2.png', dpi=300, bbox_inches='tight')
+
+# %%
+fitted_parameters
+scipy.io.savemat('test.mat', fitted_parameters)
