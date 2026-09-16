@@ -1,0 +1,30 @@
+Sequence:
+
+Use 3 b values:
+1000, 3000, 4000
+
+diffusion times change the big delta
+--> difference between onset of Dif grad 1 and Dif grad 2
+small delta = diff grad itself == 4 ms
+
+
+-frank thinks 3 b values is better, 11.7T might have higher quality but its difficult for the sphere
+
+
+Fitting the signal:
+-dmipy diffusion fitting software --> very old but also very fast
+-use for MCM to fit microdiffusion
+-combined tumor Panagiotaki (gaussian phase sphere; for sphere compartment) + NODDI (stick compartment)
+
+-fitted one sphere as average astrocyte + microglia
+	two spheres was a bit more unstable
+
+-need text files with settings like b values and bvecs etc.
+	dmipy has code to convert formats
+-delta==4, big delta can be loaded from txt file
+
+-dont model size of the stick
+-in model use diameter and not radius! ==2x radius
+
+--computation of the fitting is heavy, use brain mask to rule out non brain voxels
+

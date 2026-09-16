@@ -1,5 +1,5 @@
 # Ignore everything by default
-*
+
 
 # Un-ignore Python files, wherever they are
 !*.py

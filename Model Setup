@@ -1,0 +1,13 @@
+digraph "Model Setup" {
+	"4785fc0a-49ff-45d4-ab6c-1526d983e77b" [label=MultiCompartmentModel]
+	"1c4cc37f-8600-4542-9637-fbedc5a66895" [label=G1Ball]
+	"1c4cc37f-8600-4542-9637-fbedc5a66895" -> "4785fc0a-49ff-45d4-ab6c-1526d983e77b"
+	"826fa12d-e66b-45a1-b031-586408ca3b5d" [label=SD1WatsonDistributed]
+	"826fa12d-e66b-45a1-b031-586408ca3b5d" -> "4785fc0a-49ff-45d4-ab6c-1526d983e77b"
+	"eb4a869c-9483-4094-b5df-d6898fbf7ab0" [label=C1Stick]
+	"eb4a869c-9483-4094-b5df-d6898fbf7ab0" -> "826fa12d-e66b-45a1-b031-586408ca3b5d"
+	"4b3c6b40-6c94-4679-8f52-3dfc4a607450" [label=G2Zeppelin]
+	"4b3c6b40-6c94-4679-8f52-3dfc4a607450" -> "826fa12d-e66b-45a1-b031-586408ca3b5d"
+	"42e01395-e5d6-462f-9020-78b636acbd3d" [label=SD1Watson]
+	"42e01395-e5d6-462f-9020-78b636acbd3d" -> "826fa12d-e66b-45a1-b031-586408ca3b5d"
+}
